@@ -107,10 +107,6 @@
         <label>Senha</label>
         <input id="password" type="password" placeholder="senha" autocomplete="off" />
       </div>
-      <div class="field">
-        <label>Chave CapSolver</label>
-        <input id="capsolverKey" type="password" placeholder="CAP-..." autocomplete="off" />
-      </div>
       <div>
         <button id="go">Logar automaticamente</button>
       </div>
@@ -186,7 +182,6 @@
       const body = {
         username: $('#username').value.trim() || undefined,
         password: $('#password').value || undefined,
-        capsolverKey: $('#capsolverKey').value.trim() || undefined,
       };
       const r = await fetch('/api/login', {
         method: 'POST',
