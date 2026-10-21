@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Login automático INMETRO — demo</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel2: #1c2330;
+    --border: #2b333f;
+    --txt: #e6edf3;
+    --muted: #8b98a9;
+    --accent: #2f81f7;
+    --ok: #3fb950;
+    --erro: #f85149;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--txt);
+    font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    padding: 28px 20px 20px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #11161e, var(--bg));
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+  h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.2px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .host { font-family: var(--mono); color: var(--accent); }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; margin: 18px 0;
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 180px; }
+  label { font-size: 12px; color: var(--muted); }
+  input {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--txt);
+    border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: var(--mono);
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+  .flow { position: relative; }
+  .stepcard {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    margin: 14px 0; overflow: hidden; opacity: 0; transform: translateY(8px);
+    animation: in .35s ease forwards;
+  }
+  @keyframes in { to { opacity: 1; transform: none; } }
+  .stephead {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: var(--panel2); border-bottom: 1px solid var(--border);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 4px rgba(63,185,80,.15); }
+  .dot.erro { background: var(--erro); box-shadow: 0 0 0 4px rgba(248,81,73,.15); }
+  .stepname { font-weight: 600; font-size: 15px; }
+  .stepbody { padding: 14px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .stepbody { grid-template-columns: 1fr; } }
+  .block h4 {
+    margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .kv { font-family: var(--mono); font-size: 12.5px; }
+  .kv .line { padding: 3px 0; border-bottom: 1px dashed #222a35; word-break: break-all; }
+  .kv .k { color: var(--accent); }
+  .kv .method {
+    display: inline-block; font-weight: 700; color: #ffd33d; margin-right: 6px;
+  }
+  .note { margin: 0 16px 14px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--accent); padding: 6px 12px; background: rgba(47,129,247,.06); border-radius: 0 6px 6px 0; }
+  pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; color: #c9d6e3; }
+  .result { font-size: 15px; font-weight: 600; padding: 12px 16px; border-radius: 10px; margin: 16px 0; }
+  .result.ok { background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.4); color: #7ee787; }
+  .result.erro { background: rgba(248,81,73,.12); border: 1px solid rgba(248,81,73,.4); color: #ff7b72; }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: sp .7s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .tag { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Login automático no portal INMETRO</h1>
+    <div class="sub">Fluxo HTTP puro (headless) contra <span class="host">cronotacografo.rbmlq.gov.br</span> — pega sessão, resolve o reCAPTCHA no CapSolver e autentica. Cada request/response aparece abaixo.</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label>Usuário INMETRO</label>
+        <input id="username" placeholder="usuário da empresa" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input id="password" type="password" placeholder="senha" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Chave CapSolver</label>
+        <input id="capsolverKey" type="password" placeholder="CAP-..." autocomplete="off" />
+      </div>
+      <div>
+        <button id="go">Logar automaticamente</button>
+      </div>
+    </div>
+    <div class="hint" id="hint">Dica: se preencher no <span class="tag">.env</span>, os campos ficam opcionais. A senha, o token do captcha e o PHPSESSID aparecem <b>mascarados</b> na tela.</div>
+  </div>
+
+  <div id="result"></div>
+  <div class="flow" id="flow"></div>
+</div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const flow = $('#flow');
+  const resultEl = $('#result');
+
+  // Pre-preenche a partir do .env (sem expor senha/chave)
+  fetch('/api/config').then(r => r.json()).then(cfg => {
+    if (cfg.envUser) $('#username').value = cfg.envUser;
+    const msgs = [];
+    if (cfg.hasUser) msgs.push('usuário');
+    if (cfg.hasPassword) msgs.push('senha');
+    if (cfg.hasCapsolver) msgs.push('chave CapSolver');
+    if (msgs.length) $('#hint').innerHTML = 'Carregado do <span class="tag">.env</span>: ' + msgs.join(', ') + '. Pode deixar os campos vazios e só clicar.';
+  }).catch(() => {});
+
+  function esc(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function kvLines(obj) {
+    if (!obj) return '';
+    return Object.entries(obj).map(([k, v]) => {
+      const val = (typeof v === 'object') ? JSON.stringify(v) : v;
+      return '<div class="line"><span class="k">' + esc(k) + ':</span> ' + esc(val) + '</div>';
+    }).join('');
+  }
+
+  function renderStep(s, i) {
+    const req = s.request || {};
+    const resp = s.response || {};
+    const reqHead = req.method
+      ? '<div class="line"><span class="method">' + esc(req.method) + '</span>' + esc(req.url) + '</div>'
+      : '';
+    const reqHeaders = req.headers ? kvLines(req.headers) : '';
+    const reqBody = req.body ? '<div class="line" style="margin-top:6px;color:var(--muted)">body:</div>' + kvLines(req.body) : '';
+
+    const respHead = (resp.httpStatus !== undefined)
+      ? '<div class="line"><span class="k">HTTP</span> ' + esc(resp.httpStatus) + '</div>' : '';
+    const respHeaders = resp.headers ? kvLines(resp.headers) : '';
+    const respBody = resp.body ? '<div class="line" style="margin-top:6px;color:var(--muted)">resposta:</div>' + kvLines(resp.body) : '';
+    const respPrev = resp.bodyPreview ? '<div class="line" style="margin-top:6px;color:var(--muted)">' + esc(resp.bodyPreview) + '</div>' : '';
+
+    const el = document.createElement('div');
+    el.className = 'stepcard';
+    el.style.animationDelay = (i * 0.05) + 's';
+    el.innerHTML =
+      '<div class="stephead"><span class="dot ' + (s.status === 'erro' ? 'erro' : 'ok') + '"></span><span class="stepname">' + esc(s.name) + '</span></div>' +
+      '<div class="stepbody">' +
+        '<div class="block"><h4>Request</h4><div class="kv">' + reqHead + reqHeaders + reqBody + '</div></div>' +
+        '<div class="block"><h4>Response</h4><div class="kv">' + respHead + respHeaders + respBody + respPrev + '</div></div>' +
+      '</div>' +
+      (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '');
+    flow.appendChild(el);
+  }
+
+  $('#go').addEventListener('click', async () => {
+    const btn = $('#go');
+    flow.innerHTML = '';
+    resultEl.innerHTML = '';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>Logando...';
+
+    try {
+      const body = {
+        username: $('#username').value.trim() || undefined,
+        password: $('#password').value || undefined,
+        capsolverKey: $('#capsolverKey').value.trim() || undefined,
+      };
+      const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+
+      if (data.error) {
+        resultEl.innerHTML = '<div class="result erro">Erro: ' + esc(data.error) + '</div>';
+      }
+      (data.steps || []).forEach((s, i) => renderStep(s, i));
+
+      if (data.ok) {
+        resultEl.innerHTML = '<div class="result ok">✓ Autenticado. PHPSESSID da sessão logada: ' + esc(data.phpSessId ? (String(data.phpSessId).slice(0, 6) + '…') : '(ok)') + ' — a partir daqui as consultas (veículos, selagens, GRUs) reusam esse cookie.</div>';
+      } else if (data.reason) {
+        const map = {
+          NO_ANONYMOUS_SESSION: 'Não conseguiu nem a sessão anônima (portal fora do ar ou bloqueou o IP).',
+          CAPTCHA_FAILED: 'O portal recusou o captcha. Normalmente é só tentar de novo.',
+          CREDENTIALS_INVALID: 'Usuário ou senha do INMETRO inválidos.',
+          UNEXPECTED_RESPONSE: 'Resposta inesperada do portal.',
+        };
+        resultEl.innerHTML = '<div class="result erro">✗ Não logou — ' + esc(map[data.reason] || data.reason) + '</div>';
+      }
+    } catch (e) {
+      resultEl.innerHTML = '<div class="result erro">Erro de rede: ' + esc(e.message || e) + '</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Logar automaticamente';
+    }
+  });
+</script>
+</body>
+</html>
